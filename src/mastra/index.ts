@@ -16,12 +16,12 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 import { Mastra } from '@mastra/core/mastra';
-import { MastraAuthWorkos } from '@mastra/auth-workos';
 import { createFactorySecretEncryption, LocalFactorySandbox, MastraFactory } from '@mastra/factory';
 import { GithubIntegration } from '@mastra/factory/integrations/github/integration';
 import { PgFactoryStorage, PgVector } from '@mastra/pg';
 
 import { removeIdleSessionFolders } from './session-cleanup';
+import { LoggedMastraAuthWorkos } from './workos-auth';
 
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
@@ -78,7 +78,8 @@ export const factory = new MastraFactory({
   configVersion: 'factory-self-hosted-v1',
   // Reads WORKOS_API_KEY, WORKOS_CLIENT_ID, and WORKOS_REDIRECT_URI. The redirect defaults to <publicUrl>/auth/callback.
   // Without a fixed cookie password every restart signs everyone out.
-  auth: new MastraAuthWorkos({
+  // LoggedMastraAuthWorkos also logs a failed sign-in, which Factory hides.
+  auth: new LoggedMastraAuthWorkos({
     fetchMemberships: true,
     session: { cookiePassword: requiredEnv('WORKOS_COOKIE_PASSWORD') },
   }),
