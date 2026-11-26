@@ -21,11 +21,29 @@ import { createFactorySecretEncryption, LocalFactorySandbox, MastraFactory } fro
 import { GithubIntegration } from '@mastra/factory/integrations/github/integration';
 import { PgFactoryStorage, PgVector } from '@mastra/pg';
 
+import { removeIdleSessionFolders } from './session-cleanup';
+
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required. See .env.example.`);
   return value;
 }
+
+/** Reads a whole number that is `min` or more, or returns the fallback when the variable is not set. */
+function countEnv(name: string, fallback: number, min = 0): number {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < min) throw new Error(`${name} must be a whole number that is ${min} or more.`);
+  return value;
+}
+
+const sandboxRoot = join(homedir(), '.mastracode', 'web', 'sandboxes');
+
+// Each session keeps a checkout of the repository, and Factory does not delete
+// it. Delete the folders that nobody changed for some days. This must run
+// before the server starts: see removeIdleSessionFolders. 0 turns it off.
+await removeIdleSessionFolders(sandboxRoot, countEnv('FACTORY_SESSION_MAX_IDLE_DAYS', 7));
 
 // TODO: drop the explicit sandbox once the `@mastra/factory` release that
 // defaults it is `latest`. Until then `LocalFactorySandbox` needs its root and
@@ -49,7 +67,7 @@ const SANDBOX_ENV_KEYS = [
 
 function localSandbox(): LocalFactorySandbox {
   return new LocalFactorySandbox({
-    root: join(homedir(), '.mastracode', 'web', 'sandboxes'),
+    root: sandboxRoot,
     env: Object.fromEntries(SANDBOX_ENV_KEYS.flatMap(key => (process.env[key] ? [[key, process.env[key]]] : []))),
   });
 }
@@ -83,6 +101,16 @@ export const factory = new MastraFactory({
   // Runs agent commands on this machine as the server user, under
   // ~/.mastracode/web/sandboxes.
   sandbox: localSandbox(),
+  // The agents run in the same container as the server, and each run can
+  // install and build the repository. Factory defaults to 10 automated runs
+  // and 2 more slots for replies from people, which is too much for one
+  // server. Some runs continue outside these slots, so they limit the load
+  // but do not set a hard maximum.
+  dispatcher: {
+    // Factory reads 0 as "use the default of 10", so the minimum is 1.
+    maxInFlight: countEnv('MASTRACODE_DISPATCH_MAX_IN_FLIGHT', 2, 1),
+    maxInteractiveInFlight: countEnv('MASTRACODE_DISPATCH_MAX_INTERACTIVE_IN_FLIGHT', 1),
+  },
   publicUrl: process.env.MASTRACODE_PUBLIC_URL,
   // Signs OAuth `state` for integration connect flows; stable across restarts.
   stateSecret: requiredEnv('GITHUB_APP_WEBHOOK_SECRET'),

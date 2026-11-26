@@ -2,13 +2,22 @@
 #
 # The server runs agent commands in local sandboxes, inside this container.
 # So the image also holds the tools that agents need to work on
-# opencrvs-core: git, the Node.js version from opencrvs-core/.nvmrc, pnpm
-# and native build tools. The full (not slim) Debian image has git, curl,
-# python3, make and g++.
+# opencrvs-core: git, the GitHub CLI, the Node.js version from
+# opencrvs-core/.nvmrc, pnpm and native build tools. The full (not slim)
+# Debian image has git, curl, python3, make and g++.
 FROM node:22.23.4-bookworm
 
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends jq ripgrep tini \
+# Factory uses gh to open pull requests and as the git credential helper.
+# The Debian package of gh is too old, so it comes from the GitHub CLI
+# package repository.
+RUN mkdir -p -m 755 /etc/apt/keyrings \
+  && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+    -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+  && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+    > /etc/apt/sources.list.d/github-cli.list \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends gh jq ripgrep tini \
   && rm -rf /var/lib/apt/lists/* \
   && npm install -g pnpm@10
 

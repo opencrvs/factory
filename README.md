@@ -85,11 +85,19 @@ See [self-hosting](https://factory.mastra.ai/deployment#self-host) for runtime r
 
 The OpenCRVS Factory runs at https://factory.opencrvs.dev in the non-prod Kubernetes cluster.
 
-- `Dockerfile` builds the server image. The image also has the tools that agents use in the local sandboxes: git, Node.js from `opencrvs-core/.nvmrc`, pnpm and native build tools.
+- `Dockerfile` builds the server image. The image also has the tools that agents use in the local sandboxes: git, the GitHub CLI, Node.js from `opencrvs-core/.nvmrc`, pnpm and native build tools.
 - `.github/workflows/publish-image.yml` pushes the image to `ghcr.io/opencrvs/factory` on each push to `main`.
 - The Helm values, the network policy and the setup steps are in [`opencrvs-testland-infrastructure/environments/non-prod/factory`](https://github.com/opencrvs/opencrvs-testland-infrastructure/tree/develop/environments/non-prod/factory).
 
 When you change the Node.js version in `opencrvs-core/.nvmrc`, change the `FROM` line in `Dockerfile` too.
+
+`src/mastra/index.ts` reads these settings:
+
+| Variable | Default | What it does |
+| -------- | ------- | ------------ |
+| `MASTRACODE_DISPATCH_MAX_IN_FLIGHT` | `2` | Automated agent runs at the same time. Minimum 1. |
+| `MASTRACODE_DISPATCH_MAX_INTERACTIVE_IN_FLIGHT` | `1` | Extra slots for replies from people in GitHub. |
+| `FACTORY_SESSION_MAX_IDLE_DAYS` | `7` | At start, delete the session folders that had no change for this many days. `0` turns it off. |
 
 ## Scripts
 
