@@ -81,6 +81,16 @@ npm run start
 
 See [self-hosting](https://factory.mastra.ai/deployment#self-host) for runtime requirements.
 
+### OpenCRVS non-prod cluster
+
+The OpenCRVS Factory runs at https://factory.opencrvs.dev in the non-prod Kubernetes cluster.
+
+- `Dockerfile` builds the server image. The image also has the tools that agents use in the local sandboxes: git, Node.js from `opencrvs-core/.nvmrc`, pnpm and native build tools.
+- `.github/workflows/publish-image.yml` pushes the image to `ghcr.io/opencrvs/factory` on each push to `main`.
+- The Helm values, the network policy and the setup steps are in [`opencrvs-testland-infrastructure/environments/non-prod/factory`](https://github.com/opencrvs/opencrvs-testland-infrastructure/tree/develop/environments/non-prod/factory).
+
+When you change the Node.js version in `opencrvs-core/.nvmrc`, change the `FROM` line in `Dockerfile` too.
+
 ## Scripts
 
 | Script                              | What it does                                         |

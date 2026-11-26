@@ -1,0 +1,12 @@
+.git
+.github
+node_modules
+.mastra
+dist
+output.txt
+.env
+.env.*
+*.db
+*.db-*
+*.duckdb
+*.duckdb.wal
